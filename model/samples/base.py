@@ -41,7 +41,7 @@ class BaseDiffusion:
         # Formula: α = 1 - β
         self.alpha = 1. - self.beta
         # The cumulative sum of α.
-        self.alpha_hat = torch.cumprod(input=self.alpha, dim=0)
+        self.alpha_hat = torch.cumprod(input=self.alpha, dim=0) # 累计乘积
 
     def prepare_noise_schedule(self, schedule_name="linear"):
         """

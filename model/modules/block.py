@@ -33,7 +33,7 @@ class DownBlock(nn.Module):
         )
 
         self.emb_layer = nn.Sequential(
-            nn.SiLU(),
+            nn.SiLU(), # x*sigmoid(x)
             nn.Linear(in_features=emb_channels, out_features=out_channels),
         )
 
@@ -45,7 +45,7 @@ class DownBlock(nn.Module):
         :return: x + emb
         """
         x = self.maxpool_conv(x)
-        emb = self.emb_layer(time)[:, :, None, None].repeat(1, 1, x.shape[-2], x.shape[-1])
+        emb = self.emb_layer(time)[:, :, None, None].repeat(1, 1, x.shape[-2], x.shape[-1]) # 当你在索引操作中使用 None（或 torch.newaxis，它们是相同的），PyTorch 会在相应的位置增加一个新的维度。这是一种更简洁的方式来使用 unsqueeze() 方法。
         return x + emb
 
 

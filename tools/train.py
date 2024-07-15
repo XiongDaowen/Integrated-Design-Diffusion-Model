@@ -21,7 +21,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.cuda.amp import autocast
 from tqdm import tqdm
 
-sys.path.append(os.path.dirname(sys.path[0]))
+sys.path.append(os.path.dirname(sys.path[0])) # os.path.dirname(sys.path[0]): 这表示当前脚本目录的父目录
 from config.choices import sample_choices, network_choices, optim_choices, act_choices, lr_func_choices, \
     image_format_choices, noise_schedule_choices, parse_image_size_type
 from config.setting import MASTER_ADDR, MASTER_PORT, EMA_BETA
@@ -330,7 +330,7 @@ if __name__ == "__main__":
     # If enabled, you can modify the custom configuration.
     # For more details, please refer to the boundary line at the bottom.
     # [Note] We recommend enabling it to 'True'.
-    parser.add_argument("--conditional", default=False, action="store_true")
+    parser.add_argument("--conditional", default=True, action="store_true")
     # Set the sample type (required)
     # If not set, the default is for 'ddpm'. You can set it to either 'ddpm', 'ddim' or 'plms'.
     # Option: ddpm/ddim/plms
@@ -339,9 +339,9 @@ if __name__ == "__main__":
     # Option: unet/cspdarkunet/unetv2
     parser.add_argument("--network", type=str, default="unet", choices=network_choices)
     # File name for initializing the model (required)
-    parser.add_argument("--run_name", type=str, default="df")
+    parser.add_argument("--run_name", type=str, default="exp_cifar10_1")
     # Total epoch for training (required)
-    parser.add_argument("--epochs", type=int, default=3)
+    parser.add_argument("--epochs", type=int, default=5)
     # Batch size for training (required)
     parser.add_argument("--batch_size", type=int, default=2)
     # Number of sub-processes used for data loading (needed)
@@ -356,7 +356,7 @@ if __name__ == "__main__":
     # e.g: cifar10, Each category is stored in a separate folder, and the main folder represents the path.
     # Unconditional dataset
     # All images are placed in a single folder, and the path represents the image folder.
-    parser.add_argument("--dataset_path", type=str, default="/your/path/Defect-Diffusion-Model/datasets/dir")
+    parser.add_argument("--dataset_path", type=str, default="/root/py_demo/Integrated-Design-Diffusion-Model/datasets/cifar10")
     # Enable automatic mixed precision training (needed)
     # Effectively reducing GPU memory usage may lead to lower training accuracy and results.
     parser.add_argument("--amp", default=False, action="store_true")
@@ -372,7 +372,7 @@ if __name__ == "__main__":
     # Option: linear/cosine/warmup_cosine
     parser.add_argument("--lr_func", type=str, default="linear", choices=lr_func_choices)
     # Saving path (required)
-    parser.add_argument("--result_path", type=str, default="/your/path/Defect-Diffusion-Model/results")
+    parser.add_argument("--result_path", type=str, default="/root/py_demo/Integrated-Design-Diffusion-Model/results")
     # Whether to save weight in training (recommend)
     # If false, only save the last one.
     parser.add_argument("--save_model_interval", default=False, action="store_true")
@@ -383,7 +383,7 @@ if __name__ == "__main__":
     # it starts saving models from the specified epoch. It needs to be used with '--save_model_interval'
     parser.add_argument("--start_model_interval", type=int, default=-1)
     # Enable visualization of dataset information for model selection based on visualization (recommend)
-    parser.add_argument("--vis", default=False, action="store_true")
+    parser.add_argument("--vis", default=True, action="store_true")
     # Number of visualization images generated (recommend)
     # If not filled, the default is the number of image classes (unconditional) or images.shape[0] (conditional)
     parser.add_argument("--num_vis", type=int, default=-1)

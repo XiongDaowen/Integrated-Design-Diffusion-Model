@@ -29,7 +29,7 @@ class SelfAttention(nn.Module):
         self.mha = nn.MultiheadAttention(embed_dim=channels, num_heads=4, batch_first=True)
         self.ln = nn.LayerNorm(normalized_shape=[channels])
         self.ff_self = nn.Sequential(
-            nn.LayerNorm(normalized_shape=[channels]),
+            nn.LayerNorm(normalized_shape=[channels]), # 在 PyTorch 的 nn.LayerNorm 中指定 normalized_shape 参数时，维度的识别是从输入张量的最后一个维度开始，向左逐个对应。因此，你可以认为这是从右向左的维度识别
             nn.Linear(in_features=channels, out_features=channels),
             get_activation_function(name=act),
             nn.Linear(in_features=channels, out_features=channels),
