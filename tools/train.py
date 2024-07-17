@@ -13,6 +13,9 @@ import logging
 import coloredlogs
 import numpy as np
 import torch
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.distributed import init_process_group, destroy_process_group
 
 from torch import nn as nn
 from torch import distributed as dist
@@ -32,6 +35,7 @@ from utils.initializer import device_initializer, seed_initializer, network_init
     sample_initializer, lr_initializer, amp_initializer, loss_initializer, classes_initializer
 from utils.utils import plot_images, save_images, setup_logging, save_train_logging
 from utils.checkpoint import load_ckpt, save_ckpt
+from utils.DDP import ddp_setup
 
 logger = logging.getLogger(__name__)
 coloredlogs.install(level="INFO")
@@ -141,7 +145,11 @@ def train(rank=None, args=None):
     resume = args.resume
     # Pretrain
     pretrain = args.pretrain
-
+    ddp = args.ddp
+    if ddp:
+        local_rank = int(os.environ["LOCAL_RANK"])
+        global_rank = int(os.environ["RANK"])
+        device = local_rank
     # =================================About model initializer=================================
     # Step3: Init model
     # Network
@@ -152,7 +160,7 @@ def train(rank=None, args=None):
     else:
         model = Network(num_classes=num_classes, device=device, image_size=image_size, act=act).to(device)
     # Distributed training
-    if distributed:
+    if distributed or ddp:
         model = nn.parallel.DistributedDataParallel(module=model, device_ids=[device], find_unused_parameters=True)
     # Model optimizer
     optimizer = optimizer_initializer(model=model, optim=optim, init_lr=init_lr, device=device)
@@ -193,7 +201,7 @@ def train(rank=None, args=None):
     # Step4: Set data
     # Dataloader
     dataloader = get_dataset(image_size=image_size, dataset_path=dataset_path, batch_size=batch_size,
-                             num_workers=num_workers, distributed=distributed)
+                             num_workers=num_workers, distributed=distributed or ddp )
     # Number of dataset batches in the dataloader
     len_dataloader = len(dataloader)
 
@@ -202,6 +210,9 @@ def train(rank=None, args=None):
     logger.info(msg=f"[{device}]: Start training.")
     # Start iterating
     for epoch in range(start_epoch, args.epochs):
+        if ddp:
+            print(f"[GPU{global_rank}] Epoch {epoch} | Batchsize: {batch_size} | Steps: {len_dataloader}")
+            dataloader.sampler.set_epoch(epoch)
         logger.info(msg=f"[{device}]: Start epoch {epoch}:")
         # Set learning rate
         current_lr = lr_initializer(lr_func=lr_func, optimizer=optimizer, epoch=epoch, epochs=args.epochs,
@@ -302,7 +313,7 @@ def train(rank=None, args=None):
     logger.info(msg="[Note]: If you want to evaluate model quality, use 'FID_calculator.py' to evaluate.")
 
     # Clean up the distributed environment
-    if distributed:
+    if distributed or ddp:
         dist.destroy_process_group()
 
 
@@ -315,6 +326,9 @@ def main(args):
     if args.distributed:
         gpus = torch.cuda.device_count()
         mp.spawn(train, args=(args,), nprocs=gpus)
+    elif args.ddp:
+        ddp_setup()
+        train(args=args)
     else:
         train(args=args)
 
@@ -426,6 +440,8 @@ if __name__ == "__main__":
     # The value of world size will correspond to the actual number of GPUs or distributed nodes being used
     parser.add_argument("--world_size", type=int, default=2)
 
+    #是否用DDP分布式训练
+    parser.add_argument("--ddp",default=False, action="store_true")
     # =====================Enable the conditional training (if '--conditional' is set to 'True')=====================
     # classifier-free guidance interpolation weight, users can better generate model effect (recommend)
     parser.add_argument("--cfg_scale", type=int, default=3)

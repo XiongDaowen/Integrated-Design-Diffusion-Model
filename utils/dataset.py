@@ -79,7 +79,7 @@ def get_dataset(image_size: Union[int, list, tuple], dataset_path=None, batch_si
     # Load the folder data under the current path,
     # and automatically divide the labels according to the dataset under each file name
     dataset = torchvision.datasets.ImageFolder(root=dataset_path, transform=transforms)
-    if distributed:
+    if distributed :
         sampler = DistributedSampler(dataset)
         dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers,
                                 pin_memory=True, sampler=sampler)
