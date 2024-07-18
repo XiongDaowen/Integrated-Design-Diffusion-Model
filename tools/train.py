@@ -48,6 +48,13 @@ def train(rank=None, args=None):
     :param args: Input parameters
     :return: None
     """
+    
+    
+    ###############测试参数############
+    
+    accumulation_steps=5
+    
+    
     # =================================Before training=================================
     # Output params to console
     logger.info(msg=f"[{rank}]: Input params: {args}")
@@ -221,6 +228,7 @@ def train(rank=None, args=None):
         pbar = tqdm(dataloader)
         # Initialize images and labels
         images, labels, loss_list = None, None, []
+       
         for i, (images, labels) in enumerate(pbar):
             # The images are all resized in dataloader
             images = images.to(device)
@@ -246,15 +254,32 @@ def train(rank=None, args=None):
                 # To calculate the MSE loss
                 # You need to use the standard normal distribution of x at time t and the predicted noise
                 loss = loss_func(noise, predicted_noise)
-            # The optimizer clears the gradient of the model parameters
-            optimizer.zero_grad()
-            # Update loss and optimizer
-            # Fp16 + Fp32
-            scaler.scale(loss).backward()
-            scaler.step(optimizer)
-            scaler.update()
-            # EMA
-            ema.step_ema(ema_model=ema_model, model=model)
+                
+            loss_devide = loss / accumulation_steps   
+            
+            
+            # # The optimizer clears the gradient of the model parameters
+            # optimizer.zero_grad()
+            # # Update loss and optimizer
+            # # Fp16 + Fp32
+            # scaler.scale(loss).backward()
+            # scaler.step(optimizer)
+            # scaler.update()
+            # # EMA
+            # ema.step_ema(ema_model=ema_model, model=model)
+            
+            
+            if (i + 1) % accumulation_steps == 0:
+                scaler.scale(loss_devide).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad()  # 清除梯度
+                ema.step_ema(ema_model=ema_model, model=model)
+
+            else:
+                with model.no_sync():
+                    scaler.scale(loss_devide).backward()
+                    
 
             # TensorBoard logging
             pbar.set_postfix(MSE=loss.item())
