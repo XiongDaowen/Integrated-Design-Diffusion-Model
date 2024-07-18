@@ -52,7 +52,7 @@ def train(rank=None, args=None):
     
     ###############测试参数############
     
-    accumulation_steps=5
+    accumulation_steps=1000
     
     
     # =================================Before training=================================
@@ -230,54 +230,83 @@ def train(rank=None, args=None):
         images, labels, loss_list = None, None, []
        
         for i, (images, labels) in enumerate(pbar):
-            # The images are all resized in dataloader
-            images = images.to(device)
-            # Generates a tensor of size images.shape[0] * images.shape[0] randomly sampled time steps
-            time = diffusion.sample_time_steps(images.shape[0]).to(device)
-            # Add noise, return as x value at time t and standard normal distribution
-            x_time, noise = diffusion.noise_images(x=images, time=time)
-            # Enable Automatic mixed precision training
-            # Automatic mixed precision training
-            with autocast(enabled=amp):
-                # Unconditional training
-                if not conditional:
-                    # Unconditional model prediction
-                    predicted_noise = model(x_time, time)
-                # Conditional training, need to add labels
-                else:
-                    labels = labels.to(device)
-                    # Random unlabeled hard training, using only time steps and no class information
-                    if np.random.random() < 0.1:
-                        labels = None
-                    # Conditional model prediction
-                    predicted_noise = model(x_time, time, labels)
-                # To calculate the MSE loss
-                # You need to use the standard normal distribution of x at time t and the predicted noise
-                loss = loss_func(noise, predicted_noise)
-                
-            loss_devide = loss / accumulation_steps   
-            
-            
-            # # The optimizer clears the gradient of the model parameters
-            # optimizer.zero_grad()
-            # # Update loss and optimizer
-            # # Fp16 + Fp32
-            # scaler.scale(loss).backward()
-            # scaler.step(optimizer)
-            # scaler.update()
-            # # EMA
-            # ema.step_ema(ema_model=ema_model, model=model)
-            
             
             if (i + 1) % accumulation_steps == 0:
+            # The images are all resized in dataloader
+                images = images.to(device)
+                # Generates a tensor of size images.shape[0] * images.shape[0] randomly sampled time steps
+                time = diffusion.sample_time_steps(images.shape[0]).to(device)
+                # Add noise, return as x value at time t and standard normal distribution
+                x_time, noise = diffusion.noise_images(x=images, time=time)
+                # Enable Automatic mixed precision training
+                # Automatic mixed precision training
+                with autocast(enabled=amp):
+                    # Unconditional training
+                    if not conditional:
+                        # Unconditional model prediction
+                        predicted_noise = model(x_time, time)
+                    # Conditional training, need to add labels
+                    else:
+                        labels = labels.to(device)
+                        # Random unlabeled hard training, using only time steps and no class information
+                        if np.random.random() < 0.1:
+                            labels = None
+                        # Conditional model prediction
+                        predicted_noise = model(x_time, time, labels)
+                    # To calculate the MSE loss
+                    # You need to use the standard normal distribution of x at time t and the predicted noise
+                    loss = loss_func(noise, predicted_noise)
+                    
+                loss_devide = loss / accumulation_steps   
+                
+                
+                # # The optimizer clears the gradient of the model parameters
+                # optimizer.zero_grad()
+                # # Update loss and optimizer
+                # # Fp16 + Fp32
+                # scaler.scale(loss).backward()
+                # scaler.step(optimizer)
+                # scaler.update()
+                # # EMA
+                # ema.step_ema(ema_model=ema_model, model=model)
+                
+                
+                
                 scaler.scale(loss_devide).backward()
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()  # 清除梯度
                 ema.step_ema(ema_model=ema_model, model=model)
-
+                
             else:
                 with model.no_sync():
+                    # The images are all resized in dataloader
+                    images = images.to(device)
+                    # Generates a tensor of size images.shape[0] * images.shape[0] randomly sampled time steps
+                    time = diffusion.sample_time_steps(images.shape[0]).to(device)
+                    # Add noise, return as x value at time t and standard normal distribution
+                    x_time, noise = diffusion.noise_images(x=images, time=time)
+                    # Enable Automatic mixed precision training
+                    # Automatic mixed precision training
+                    with autocast(enabled=amp):
+                        # Unconditional training
+                        if not conditional:
+                            # Unconditional model prediction
+                            predicted_noise = model(x_time, time)
+                        # Conditional training, need to add labels
+                        else:
+                            labels = labels.to(device)
+                            # Random unlabeled hard training, using only time steps and no class information
+                            if np.random.random() < 0.1:
+                                labels = None
+                            # Conditional model prediction
+                            predicted_noise = model(x_time, time, labels)
+                        # To calculate the MSE loss
+                        # You need to use the standard normal distribution of x at time t and the predicted noise
+                    loss = loss_func(noise, predicted_noise)
+
+                    loss_devide = loss / accumulation_steps
+
                     scaler.scale(loss_devide).backward()
                     
 
